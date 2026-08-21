@@ -1,10 +1,21 @@
-// LocalStorage Persistence - রিফ্রেশ দিলেও ডাটা সেভ থাকবে
-const appState = JSON.parse(localStorage.getItem('talktalk_user')) || {
-  balance: 125.50,
-  internetMB: 2560,
-  minutes: 85,
-  sms: 50
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot, updateDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAEwjNAzT6WlflPZO1-FWT93aC9-9sE8ps",
+  authDomain: "talktalk-ccff1.firebaseapp.com",
+  projectId: "talktalk-ccff1",
+  storageBucket: "talktalk-ccff1.firebasestorage.app",
+  messagingSenderId: "918217516258",
+  appId: "1:918217516258:web:c06d08073b22c1cc726abb",
+  measurementId: "G-G02XE68K8R"
 };
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const userId = "01300-123456"; 
+let userData = { balance: 0, internetMB: 0, minutes: 0, sms: 0 };
 
 const packs = [
   { id: 1, type: 'internet', title: '3 GB ইন্টারনেট', validity: '7 দিন', price: 69, mb: 3072, mins: 0 },
@@ -14,29 +25,25 @@ const packs = [
   { id: 5, type: 'bundle', title: '15 GB + 300 মিনিট', validity: '30 দিন', price: 349, mb: 15360, mins: 300 }
 ];
 
-document.addEventListener('DOMContentLoaded', () => {
-  updateUI();
-  renderPacks(packs);
+// Realtime Sync with Cloud Database
+onSnapshot(doc(db, "users", userId), (docSnap) => {
+  if (docSnap.exists()) {
+    userData = docSnap.data();
+    updateUI();
+  }
 });
 
-function saveState() {
-  localStorage.setItem('talktalk_user', JSON.stringify(appState));
-  updateUI();
-}
-
 function updateUI() {
-  document.getElementById('balanceVal').innerText = `৳ ${appState.balance.toFixed(2)}`;
-  
-  const mb = appState.internetMB;
+  document.getElementById('balanceVal').innerText = `৳ ${(userData.balance || 0).toFixed(2)}`;
+  const mb = userData.internetMB || 0;
   document.getElementById('internetVal').innerText = mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
-  document.getElementById('minuteVal').innerText = `${appState.minutes} Min`;
-  document.getElementById('smsVal').innerText = `${appState.sms} SMS`;
+  document.getElementById('minuteVal').innerText = `${userData.minutes || 0} Min`;
+  document.getElementById('smsVal').innerText = `${userData.sms || 0} SMS`;
 }
 
 function renderPacks(list) {
   const container = document.getElementById('packContainer');
   container.innerHTML = '';
-
   list.forEach(pack => {
     container.innerHTML += `
       <div class="pack-card">
@@ -44,59 +51,57 @@ function renderPacks(list) {
           <h4>${pack.title}</h4>
           <small style="color:#666;">মেয়াদ: ${pack.validity}</small>
         </div>
-        <button class="buy-btn" onclick="buyPack(${pack.id})">৳ ${pack.price}</button>
+        <button class="buy-btn" id="btn-${pack.id}">৳ ${pack.price}</button>
       </div>
     `;
   });
+
+  list.forEach(pack => {
+    document.getElementById(`btn-${pack.id}`)?.addEventListener('click', () => buyPack(pack));
+  });
 }
 
-function filterPacks(category, btn = null) {
+async function buyPack(pack) {
+  if (userData.balance >= pack.price) {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+      balance: userData.balance - pack.price,
+      internetMB: (userData.internetMB || 0) + pack.mb,
+      minutes: (userData.minutes || 0) + pack.mins
+    });
+    alert(`সফল হয়েছে! আপনি ${pack.title} কিনেছেন।`);
+  } else {
+    alert('পর্যাপ্ত ব্যালেন্স নেই! রিচার্জ করুন।');
+    window.openModal();
+  }
+}
+
+window.filterPacks = function(category, btn = null) {
   if (btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
+  renderPacks(category === 'all' ? packs : packs.filter(p => p.type === category));
+};
 
-  if (category === 'all') {
-    renderPacks(packs);
-  } else {
-    renderPacks(packs.filter(p => p.type === category));
-  }
-}
+window.openModal = function() { document.getElementById('rechargeModal').style.display = 'flex'; };
+window.closeModal = function() { document.getElementById('rechargeModal').style.display = 'none'; };
 
-function buyPack(id) {
-  const pack = packs.find(p => p.id === id);
-  if (appState.balance >= pack.price) {
-    appState.balance -= pack.price;
-    appState.internetMB += pack.mb;
-    appState.minutes += pack.mins;
-    saveState();
-    alert(`সফল হয়েছে! আপনি ${pack.title} কিনেছেন।`);
-  } else {
-    alert('পর্যাপ্ত ব্যালেন্স নেই! রিচার্জ করুন।');
-    openModal();
-  }
-}
-
-function getLoan() {
-  if (confirm('৳ ২৫ টাকা ইমার্জেন্সি ব্যালেন্স নিতে চান?')) {
-    appState.balance += 25;
-    saveState();
-    alert('৳ ২৫ টাকা যোগ করা হয়েছে।');
-  }
-}
-
-function openModal() { document.getElementById('rechargeModal').style.display = 'flex'; }
-function closeModal() { document.getElementById('rechargeModal').style.display = 'none'; }
-
-function processRecharge() {
+window.processRecharge = async function() {
   const amount = parseFloat(document.getElementById('rechargeAmount').value);
   if (isNaN(amount) || amount < 10) {
     alert('সর্বনিম্ন ১০ টাকা রিচার্জ করুন!');
     return;
   }
-  appState.balance += amount;
-  saveState();
+  await addDoc(collection(db, "requests"), {
+    phone: userId,
+    amount: amount,
+    status: "pending",
+    time: new Date().toLocaleString()
+  });
   document.getElementById('rechargeAmount').value = '';
-  closeModal();
-  alert(`৳ ${amount} টাকা রিচার্জ সম্পন্ন হয়েছে!`);
-      }
+  window.closeModal();
+  alert('রিচার্জের অনুরোধ এডমিনের কাছে পাঠানো হয়েছে!');
+};
+
+renderPacks(packs);
