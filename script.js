@@ -1,107 +1,77 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, updateDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyAEwjNAzT6WlflPZO1-FWT93aC9-9sE8ps",
   authDomain: "talktalk-ccff1.firebaseapp.com",
   projectId: "talktalk-ccff1",
   storageBucket: "talktalk-ccff1.firebasestorage.app",
   messagingSenderId: "918217516258",
-  appId: "1:918217516258:web:c06d08073b22c1cc726abb",
-  measurementId: "G-G02XE68K8R"
+  appId: "1:918217516258:web:c06d08073b22c1cc726abb"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const userId = "01300-123456"; 
-let userData = { balance: 0, internetMB: 0, minutes: 0, sms: 0 };
+const userId = "01300-123456";
 
-const packs = [
-  { id: 1, type: 'internet', title: '3 GB ইন্টারনেট', validity: '7 দিন', price: 69, mb: 3072, mins: 0 },
-  { id: 2, type: 'internet', title: '10 GB ইন্টারনেট', validity: '30 দিন', price: 199, mb: 10240, mins: 0 },
-  { id: 3, type: 'minute', title: '100 মিনিট', validity: '7 দিন', price: 64, mb: 0, mins: 100 },
-  { id: 4, type: 'minute', title: '300 মিনিট', validity: '30 দিন', price: 187, mb: 0, mins: 300 },
-  { id: 5, type: 'bundle', title: '15 GB + 300 মিনিট', validity: '30 দিন', price: 349, mb: 15360, mins: 300 }
-];
-
-// Realtime Sync with Cloud Database
-onSnapshot(doc(db, "users", userId), (docSnap) => {
+// 1. Fetch User Data (Balance, Minutes, MB, SMS)
+const userRef = doc(db, "users", userId);
+onSnapshot(userRef, (docSnap) => {
   if (docSnap.exists()) {
-    userData = docSnap.data();
-    updateUI();
+    const data = docSnap.data();
+    
+    const balEl = document.getElementById('mainBalance');
+    if(balEl) balEl.innerText = `৳ ${(data.balance || 0).toFixed(2)}`;
+    
+    const mbEl = document.getElementById('internetMB');
+    if(mbEl) {
+      const mb = data.internetMB || 0;
+      mbEl.innerText = mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+    }
+
+    const minEl = document.getElementById('minutes');
+    if(minEl) minEl.innerText = `${data.minutes || 0} Min`;
+
+    const smsEl = document.getElementById('sms');
+    if(smsEl) smsEl.innerText = `${data.sms || 0} SMS`;
   }
 });
 
-function updateUI() {
-  document.getElementById('balanceVal').innerText = `৳ ${(userData.balance || 0).toFixed(2)}`;
-  const mb = userData.internetMB || 0;
-  document.getElementById('internetVal').innerText = mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
-  document.getElementById('minuteVal').innerText = `${userData.minutes || 0} Min`;
-  document.getElementById('smsVal').innerText = `${userData.sms || 0} SMS`;
-}
+// 2. Fetch Live Offers from Firebase
+const packContainer = document.getElementById('packContainer');
 
-function renderPacks(list) {
-  const container = document.getElementById('packContainer');
-  container.innerHTML = '';
-  list.forEach(pack => {
-    container.innerHTML += `
-      <div class="pack-card">
-        <div>
-          <h4>${pack.title}</h4>
-          <small style="color:#666;">মেয়াদ: ${pack.validity}</small>
+if (packContainer) {
+  onSnapshot(collection(db, "special_offers"), (snapshot) => {
+    packContainer.innerHTML = '';
+    if (snapshot.empty) {
+      packContainer.innerHTML = '<p style="text-align:center; padding:15px; color:#888;">কোনো স্পেশাল অফার পাওয়া যায়নি</p>';
+      return;
+    }
+
+    snapshot.forEach(docSnap => {
+      const offer = docSnap.data();
+      packContainer.innerHTML += `
+        <div class="pack-card" style="background:#fff; padding:15px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+          <div>
+            <h4 style="margin:0; font-size:16px; color:#222; font-weight:bold;">${offer.title}</h4>
+            <p style="margin:4px 0 0; font-size:12px; color:#666;">মেয়াদ: ${offer.validity}</p>
+          </div>
+          <button style="background:#ff416c; color:#fff; border:none; padding:8px 18px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px;">৳ ${offer.price}</button>
         </div>
-        <button class="buy-btn" id="btn-${pack.id}">৳ ${pack.price}</button>
-      </div>
-    `;
-  });
-
-  list.forEach(pack => {
-    document.getElementById(`btn-${pack.id}`)?.addEventListener('click', () => buyPack(pack));
-  });
-}
-
-async function buyPack(pack) {
-  if (userData.balance >= pack.price) {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
-      balance: userData.balance - pack.price,
-      internetMB: (userData.internetMB || 0) + pack.mb,
-      minutes: (userData.minutes || 0) + pack.mins
+      `;
     });
-    alert(`সফল হয়েছে! আপনি ${pack.title} কিনেছেন।`);
-  } else {
-    alert('পর্যাপ্ত ব্যালেন্স নেই! রিচার্জ করুন।');
-    window.openModal();
-  }
+  });
 }
 
-window.filterPacks = function(category, btn = null) {
-  if (btn) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-  renderPacks(category === 'all' ? packs : packs.filter(p => p.type === category));
+// Modal Toggle Logic
+window.openModal = function() {
+  const modal = document.getElementById('rechargeModal');
+  if(modal) modal.style.display = 'flex';
 };
 
-window.openModal = function() { document.getElementById('rechargeModal').style.display = 'flex'; };
-window.closeModal = function() { document.getElementById('rechargeModal').style.display = 'none'; };
-
-window.processRecharge = async function() {
-  const amount = parseFloat(document.getElementById('rechargeAmount').value);
-  if (isNaN(amount) || amount < 10) {
-    alert('সর্বনিম্ন ১০ টাকা রিচার্জ করুন!');
-    return;
-  }
-  await addDoc(collection(db, "requests"), {
-    phone: userId,
-    amount: amount,
-    status: "pending",
-    time: new Date().toLocaleString()
-  });
-  document.getElementById('rechargeAmount').value = '';
-  window.closeModal();
-  alert('রিচার্জের অনুরোধ এডমিনের কাছে পাঠানো হয়েছে!');
+window.closeModal = function() {
+  const modal = document.getElementById('rechargeModal');
+  if(modal) modal.style.display = 'none';
 };
-
-renderPacks(packs);
