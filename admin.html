@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TalkTalk Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; font-family: sans-serif; }
+    body { background: #f0f2f5; padding: 15px; }
+    .card { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h2, h3 { color: #ff416c; margin-bottom: 10px; }
+    input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
+    button { background: #ff416c; color: #fff; border: none; font-weight: bold; cursor: pointer; }
+    .req-item { background: #fff3f5; padding: 10px; border-radius: 5px; margin-bottom: 8px; border-left: 4px solid #ff416c; }
+  </style>
+</head>
+<body>
+
+  <h2>TalkTalk Control Panel</h2>
+
+  <!-- Admin Control Area -->
+  <div class="card">
+    <h3>ইউজার ব্যালেন্স ও ডাটা পরিবর্তন</h3>
+    <input type="text" id="targetUser" value="01300-123456" placeholder="ইউজার নম্বর">
+    <input type="number" id="addBalance" placeholder="ব্যালেন্স যোগ করুন (৳)">
+    <input type="number" id="addInternet" placeholder="ইন্টারনেট যোগ করুন (MB)">
+    <button onclick="updateUserData()">ডাটাবেজে আপডেট করুন</button>
+  </div>
+
+  <!-- Pending Recharge Requests -->
+  <div class="card">
+    <h3>পেন্ডিং রিচার্জ রিকোয়েস্ট</h3>
+    <div id="requestList">লোডিং...</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAEwjNAzT6WlflPZO1-FWT93aC9-9sE8ps",
+      authDomain: "talktalk-ccff1.firebaseapp.com",
+      projectId: "talktalk-ccff1",
+      storageBucket: "talktalk-ccff1.firebasestorage.app",
+      messagingSenderId: "918217516258",
+      appId: "1:918217516258:web:c06d08073b22c1cc726abb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.updateUserData = async function() {
+      const phone = document.getElementById('targetUser').value;
+      const bal = parseFloat(document.getElementById('addBalance').value) || 0;
+      const mb = parseInt(document.getElementById('addInternet').value) || 0;
+
+      const userRef = doc(db, "users", phone);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const curData = userSnap.data();
+        await updateDoc(userRef, {
+          balance: (curData.balance || 0) + bal,
+          internetMB: (curData.internetMB || 0) + mb
+        });
+      } else {
+        await setDoc(userRef, { balance: bal, internetMB: mb, minutes: 0, sms: 0 });
+      }
+      alert('সফলভাবে আপডেট করা হয়েছে!');
+    };
+
+    onSnapshot(collection(db, "requests"), (snapshot) => {
+      const container = document.getElementById('requestList');
+      container.innerHTML = '';
+      if(snapshot.empty) container.innerHTML = 'কোনো পেন্ডিং রিকোয়েস্ট নেই';
+
+      snapshot.forEach(docSnap => {
+        const req = docSnap.data();
+        container.innerHTML += `
+          <div class="req-item">
+            <p><strong>নম্বর:</strong> ${req.phone}</p>
+            <p><strong>টাকা:</strong> ৳ ${req.amount}</p>
+            <button onclick="approveReq('${docSnap.id}', '${req.phone}', ${req.amount})">অনুমোদন করুন</button>
+          </div>
+        `;
+      });
+    });
+
+    window.approveReq = async function(reqId, phone, amount) {
+      const userRef = doc(db, "users", phone);
+      const userSnap = await getDoc(userRef);
+      const curBal = userSnap.exists() ? (userSnap.data().balance || 0) : 0;
+      
+      await setDoc(userRef, { balance: curBal + amount }, { merge: true });
+      await deleteDoc(doc(db, "requests", reqId));
+      alert('রিচার্জ সফলভাবে এপ্রুভ হয়েছে!');
+    };
+  </script>
+</body>
+</html>
