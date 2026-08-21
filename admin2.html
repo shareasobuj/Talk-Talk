@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TalkTalk - Advanced Offer & Minute Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background: #f4f6f9; padding: 20px; color: #333; }
+    .container { max-width: 500px; margin: 0 auto; }
+    .card { background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    h2 { color: #ff416c; font-size: 20px; margin-bottom: 15px; text-align: center; }
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 13px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+    input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+    input:focus { border-color: #ff416c; }
+    .btn-submit { width: 100%; padding: 12px; background: linear-gradient(135deg, #ff416c, #ff4b2b); color: #fff; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 10px; }
+    .btn-submit:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="card">
+      <h2>TalkTalk মিনিট ও অফার কন্ট্রোল</h2>
+      
+      <div class="form-group">
+        <label>ইউজার মোবাইল নম্বর</label>
+        <input type="text" id="targetUser" value="01300-123456" placeholder="যেমন: 01300-123456">
+      </div>
+
+      <div class="form-group">
+        <label>ব্যালেন্স যোগ করুন (৳)</label>
+        <input type="number" id="addBalance" placeholder="টাকার পরিমাণ (যেমন: 50)">
+      </div>
+
+      <div class="form-group">
+        <label>ইন্টারনেট যোগ করুন (MB)</label>
+        <input type="number" id="addInternet" placeholder="মেগাবাইট (যেমন: 1024)">
+      </div>
+
+      <div class="form-group">
+        <label>মিনিট যোগ করুন (Min)</label>
+        <input type="number" id="addMinutes" placeholder="মিনিটের পরিমাণ (যেমন: 100)">
+      </div>
+
+      <div class="form-group">
+        <label>এসএমএস যোগ করুন (SMS)</label>
+        <input type="number" id="addSms" placeholder="এসএমএস সংখ্যা (যেমন: 50)">
+      </div>
+
+      <button class="btn-submit" onclick="updateUserOffers()">ডাটাবেজে আপডেট ও সেন্ড করুন</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAEwjNAzT6WlflPZO1-FWT93aC9-9sE8ps",
+      authDomain: "talktalk-ccff1.firebaseapp.com",
+      projectId: "talktalk-ccff1",
+      storageBucket: "talktalk-ccff1.firebasestorage.app",
+      messagingSenderId: "918217516258",
+      appId: "1:918217516258:web:c06d08073b22c1cc726abb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.updateUserOffers = async function() {
+      const phone = document.getElementById('targetUser').value.trim();
+      const bal = parseFloat(document.getElementById('addBalance').value) || 0;
+      const mb = parseInt(document.getElementById('addInternet').value) || 0;
+      const min = parseInt(document.getElementById('addMinutes').value) || 0;
+      const sms = parseInt(document.getElementById('addSms').value) || 0;
+
+      if(!phone) {
+        alert('দয়া করে ইউজার নম্বর দিন!');
+        return;
+      }
+
+      const userRef = doc(db, "users", phone);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const curData = userSnap.data();
+        await updateDoc(userRef, {
+          balance: (curData.balance || 0) + bal,
+          internetMB: (curData.internetMB || 0) + mb,
+          minutes: (curData.minutes || 0) + min,
+          sms: (curData.sms || 0) + sms
+        });
+      } else {
+        await setDoc(userRef, { 
+          balance: bal, 
+          internetMB: mb, 
+          minutes: min, 
+          sms: sms 
+        });
+      }
+
+      alert('সফলভাবে মিনিট, ইন্টারনেট ও ব্যালেন্স যোগ করা হয়েছে!');
+      
+      // Clear inputs
+      document.getElementById('addBalance').value = '';
+      document.getElementById('addInternet').value = '';
+      document.getElementById('addMinutes').value = '';
+      document.getElementById('addSms').value = '';
+    };
+  </script>
+</body>
+</html>
