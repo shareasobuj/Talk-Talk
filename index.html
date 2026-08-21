@@ -6,43 +6,43 @@
   <title>TalkTalk App</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ff416c">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3616/3616215.png">
 </head>
 <body>
 
   <div class="app-container">
-    <!-- Header Area -->
     <header class="header">
       <div class="top-bar">
         <div class="brand"><i class="fa-solid fa-signal"></i> TalkTalk</div>
         <div class="user-number" id="userNumber">01300-123456</div>
       </div>
 
-      <!-- Balance & Unit Cards -->
       <div class="dashboard">
         <div class="card">
           <span>মেইন ব্যালেন্স</span>
-          <h2 id="balanceVal">৳ 125.50</h2>
+          <h2 id="balanceVal">৳ 0.00</h2>
           <small>মেয়াদ: 30 Dec 2026</small>
         </div>
         <div class="card">
           <span>ইন্টারনেট</span>
-          <h2 id="internetVal">2.5 GB</h2>
+          <h2 id="internetVal">0 MB</h2>
           <small>অবশিষ্ট আছে</small>
         </div>
         <div class="card">
           <span>মিনিট</span>
-          <h2 id="minuteVal">85 Min</h2>
+          <h2 id="minuteVal">0 Min</h2>
           <small>অবশিষ্ট আছে</small>
         </div>
         <div class="card">
           <span>এসএমএস</span>
-          <h2 id="smsVal">50 SMS</h2>
+          <h2 id="smsVal">0 SMS</h2>
           <small>অবশিষ্ট আছে</small>
         </div>
       </div>
     </header>
 
-    <!-- Quick Action Buttons -->
     <section class="quick-actions">
       <button class="action-btn" onclick="openModal()">
         <div class="icon-box"><i class="fa-solid fa-wallet"></i></div>
@@ -62,7 +62,6 @@
       </button>
     </section>
 
-    <!-- Offers Section -->
     <section class="section">
       <h3 class="section-title">স্পেশাল অফারসমূহ</h3>
       
@@ -73,22 +72,24 @@
         <button class="tab-btn" onclick="filterPacks('bundle', this)">বান্ডেল</button>
       </div>
 
-      <div class="pack-list" id="packContainer">
-        <!-- JS dynamically renders pack cards -->
-      </div>
+      <div class="pack-list" id="packContainer"></div>
     </section>
   </div>
 
-  <!-- Instant Recharge Modal -->
   <div class="modal-overlay" id="rechargeModal">
     <div class="modal-card">
       <h3>ইনস্ট্যান্ট রিচার্জ</h3>
       <input type="number" id="rechargeAmount" placeholder="টাকার পরিমাণ লিখুন (৳)">
-      <button class="btn btn-pay" onclick="processRecharge()">bKash / Nagad দিয়ে পেমেন্ট</button>
+      <button class="btn btn-pay" onclick="processRecharge()">রিচার্জের অনুরোধ পাঠান</button>
       <button class="btn btn-close" onclick="closeModal()">বন্ধ করুন</button>
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js" type="module"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
 </body>
-  </html>
+</html>
