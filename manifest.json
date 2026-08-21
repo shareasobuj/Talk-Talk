@@ -1,0 +1,16 @@
+{
+  "short_name": "TalkTalk",
+  "name": "TalkTalk Digital Telecom App",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3616/3616215.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#ff416c",
+  "theme_color": "#ff416c",
+  "display": "standalone",
+  "orientation": "portrait"
+}
