@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TalkTalk - Create Special Offers</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background: #f4f6f9; padding: 20px; color: #333; }
+    .container { max-width: 500px; margin: 0 auto; }
+    .card { background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    h2, h3 { color: #ff416c; margin-bottom: 15px; text-align: center; }
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 13px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+    .btn-submit { width: 100%; padding: 12px; background: linear-gradient(135deg, #ff416c, #ff4b2b); color: #fff; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 10px; }
+    .offer-item { background: #fff3f5; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #ff416c; }
+    .btn-del { background: #d9534f; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="card">
+      <h2>নতুন স্পেশাল অফার তৈরি করুন</h2>
+      
+      <div class="form-group">
+        <label>অফারের নাম / টাইটেল</label>
+        <input type="text" id="title" placeholder="যেমন: 10 GB + 200 Min">
+      </div>
+
+      <div class="form-group">
+        <label>ক্যাটাগরি</label>
+        <select id="category">
+          <option value="internet">ইন্টারনেট</option>
+          <option value="minute">মিনিট</option>
+          <option value="bundle">বান্ডেল</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>মেয়াদ</label>
+        <input type="text" id="validity" placeholder="যেমন: 7 দিন / 30 দিন">
+      </div>
+
+      <div class="form-group">
+        <label>মূল্য (৳)</label>
+        <input type="number" id="price" placeholder="যেমন: 199">
+      </div>
+
+      <button class="btn-submit" onclick="addOffer()">অফার যুক্ত করুন</button>
+    </div>
+
+    <div class="card">
+      <h3>বর্তমান স্পেশাল অফারসমূহ</h3>
+      <div id="offerListContainer">লোডিং...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAEwjNAzT6WlflPZO1-FWT93aC9-9sE8ps",
+      authDomain: "talktalk-ccff1.firebaseapp.com",
+      projectId: "talktalk-ccff1",
+      storageBucket: "talktalk-ccff1.firebasestorage.app",
+      messagingSenderId: "918217516258",
+      appId: "1:918217516258:web:c06d08073b22c1cc726abb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.addOffer = async function() {
+      const title = document.getElementById('title').value.trim();
+      const category = document.getElementById('category').value;
+      const validity = document.getElementById('validity').value.trim();
+      const price = parseFloat(document.getElementById('price').value);
+
+      if (!title || !validity || isNaN(price)) {
+        alert('দয়া করে সব ঘর সঠিকভাবে পূরণ করুন!');
+        return;
+      }
+
+      await addDoc(collection(db, "special_offers"), {
+        title: title,
+        category: category,
+        validity: validity,
+        price: price
+      });
+
+      alert('নতুন স্পেশাল অফার যুক্ত হয়েছে!');
+      document.getElementById('title').value = '';
+      document.getElementById('validity').value = '';
+      document.getElementById('price').value = '';
+    };
+
+    onSnapshot(collection(db, "special_offers"), (snapshot) => {
+      const container = document.getElementById('offerListContainer');
+      container.innerHTML = '';
+      if(snapshot.empty) container.innerHTML = '<p style="text-align:center;">কোনো অফার নেই</p>';
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        container.innerHTML += `
+          <div class="offer-item">
+            <div>
+              <strong>${data.title}</strong><br>
+              <small>মেয়াদ: ${data.validity} | ৳ ${data.price}</small>
+            </div>
+            <button class="btn-del" onclick="deleteOffer('${docSnap.id}')">মুছুন</button>
+          </div>
+        `;
+      });
+    });
+
+    window.deleteOffer = async function(id) {
+      if(confirm('অফারটি মুছে ফেলতে চান?')) {
+        await deleteDoc(doc(db, "special_offers", id));
+      }
+    };
+  </script>
+</body>
+</html>
